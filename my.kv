@@ -1,0 +1,62 @@
+<Car>:
+	source: 'car.png'
+	allow_stretch: True
+	size: 30,20
+	angle: 1
+	canvas.before:
+		PushMatrix
+		Rotate:
+			angle: root.angle
+			origin: self.center
+	canvas.after:
+		PopMatrix
+	
+<Ball1>:
+	size: 10,10
+	my_color: 1,1,1
+	canvas: 
+		Color:
+			rgb: 0.48,0.96,0.66
+		Ellipse:
+			pos: self.pos
+			size: self.size
+
+<Ball2>:
+	size: 10,10
+	canvas: 
+		Color:
+			rgb: 0.48,0.96,0.66
+		Ellipse:
+			pos: self.pos
+			size: self.size
+
+<Ball3>:
+	size: 10,10
+	canvas: 
+		Color:
+			rgb: 0.48,0.96,0.66
+		Ellipse:
+			pos: self.pos
+			size: self.size
+
+<Map>:
+	za_car: my_car
+	za_ball_1: ball_1
+	za_ball_2: ball_2
+	za_ball_3: ball_3
+	width: 1299
+	height: 616
+	canvas:
+		Rectangle:
+			source: 'mask.jpeg'
+			size: 1300,617
+	
+	Car:
+		id: my_car
+
+	Ball1:
+		id: ball_1
+	Ball2:
+		id: ball_2
+	Ball3:
+		id: ball_3
