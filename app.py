@@ -26,6 +26,9 @@ def init():
     sand = cv2.imread('mask.jpeg',0)
     sand = np.squeeze(sand)/255
 
+class Brain():
+
+
 class Car(Image):
     velocity_x = NumericProperty(1.0)
     velocity_y = NumericProperty(1.0)
@@ -39,12 +42,9 @@ class Car(Image):
             - the rotate function is inherent to the Vector class and will rotate the direction at which the
             car moves and make sure the car only goes in the direction it points to. No backward motion
         """
-        self.angle = (self.angle+rotation)
+        self.angle = (self.angle+rotation)%360
         self.rotation = rotation
         self.pos = Vector(*self.velocity).rotate(self.angle-45) + self.pos
-        self.origin = self.center
-        #print(f"Image at position: {self.pos} {sand[-int(self.y), int(self.x)]}")
-
 
 class Ball1(Widget):
     pass
@@ -85,8 +85,8 @@ class Map(Widget):
 
         # Setting the position of the ball
         self.za_ball_1.pos =  Vector(*self.za_car.pos) + Vector(40.0,0).rotate(self.za_car.angle)
-        self.za_ball_2.pos =  Vector(*self.za_car.pos) + Vector(40.0,0).rotate(self.za_car.angle+30)
-        self.za_ball_3.pos =  Vector(*self.za_car.pos) + Vector(40.0,0).rotate(self.za_car.angle-30)
+        self.za_ball_2.pos =  Vector(*self.za_car.pos) + Vector(40.0,0).rotate((self.za_car.angle+30)%360)
+        self.za_ball_3.pos =  Vector(*self.za_car.pos) + Vector(40.0,0).rotate((self.za_car.angle-30)%360)
 
 
         # Getting the sensor values
