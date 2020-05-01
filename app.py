@@ -1,3 +1,5 @@
+""" This module houses all the kivy related stuff """
+
 from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.properties import (ObjectProperty, NumericProperty, ReferenceListProperty)
@@ -13,11 +15,11 @@ import cv2
 
 def init():
     global sand
-    global width
-    global height
-    global sensor1
-    global sensor2
-    global sensor3
+    global width, height
+    global sensor1, sensor2, sensor3
+    global goal_x, goal_y
+    global last_distance, last_reward
+    global box_range_x, box_range_y
 
     width = 1299
     height = 616
@@ -26,12 +28,19 @@ def init():
     sand = cv2.imread('mask.jpeg',0)
     sand = np.squeeze(sand)/255
 
-class Brain():
+    goal_x = 1000
+    goal_y = 400
+
+    last_distance = (goal_x) ** 2 + (goal_y) ** 2
+    last_reward = 0
+
+    box_range_x = np.arange(-10,10)
+    box_range_y = np.arange(-10,10)
 
 
 class Car(Image):
-    velocity_x = NumericProperty(1.0)
-    velocity_y = NumericProperty(1.0)
+    velocity_x = NumericProperty(2.0)
+    velocity_y = NumericProperty(0.0)
     velocity = ReferenceListProperty(velocity_x, velocity_y)
     angle = NumericProperty(1)
     rotation = NumericProperty(2.0)
@@ -44,7 +53,7 @@ class Car(Image):
         """
         self.angle = (self.angle+rotation)%360
         self.rotation = rotation
-        self.pos = Vector(*self.velocity).rotate(self.angle-45) + self.pos
+        self.pos = Vector(*self.velocity).rotate(self.angle) + self.pos
 
 class Ball1(Widget):
     pass
@@ -55,6 +64,14 @@ class Ball2(Widget):
 class Ball3(Widget):
     pass
 
+def get_random_action():
+    prob = np.random.uniform(0,1)
+    if prob <= 0.2:
+        return 1
+    elif prob >= 0.8:
+        return 2
+    else:
+        return 0
 
 class Map(Widget):
     za_car = ObjectProperty(None)
@@ -65,53 +82,74 @@ class Map(Widget):
 
     def update(self,_):
         global sand
-        global height
-        global width
+        global height, width
         global sensor1, sensor2, sensor3
+        global goal_x, goal_y
+        global distance, last_reward, last_distance
+        global box_range_x, box_range_y
 
-        # Make sure the car avoids going to the horizon
+        xx = goal_x - self.za_car.x
+        yy = goal_y - self.za_car.y
+        
+        orientation = Vector(*self.za_car.velocity).angle((xx,yy))/180.0
 
+        
+        # Getting the sensor values
+        sensor1 = sand[(self.za_ball_1.y + box_range_y).astype(np.int)*-1, (self.za_ball_1.x+box_range_x).astype(np.int)].sum()/400
+        sensor2 = sand[(self.za_ball_2.y + box_range_y).astype(np.int)*-1, (self.za_ball_2.x+box_range_x).astype(np.int)].sum()/400
+        sensor3 = sand[(self.za_ball_3.y + box_range_y).astype(np.int)*-1, (self.za_ball_3.x+box_range_x).astype(np.int)].sum()/400
 
-        self.size = Vector(width,height)
-        prob = np.random.uniform(0,1) 
-        if prob <= 0.2:
-            rotation = self.actions[1]
-        elif prob >= 0.8:
-            rotation = self.actions[2]
+        last_signal = [sensor1, sensor2, sensor3, orientation, -orientation]
+
+        # Here 
+        # Update the ai 
+        # get the action
+        action = get_random_action()
+        self.za_car.move(self.actions[action])
+        # Move the car based on the action
+
+        # Based on your action, get the absolute distance from your goal
+        distance = (self.za_car.x - goal_x) ** 2 + (self.za_car.y-goal_y) ** 2
+
+        # Now check if the car is on the road or not and then give reward based on it
+        if sand[-int(self.za_car.center_y), int(self.za_car.center_x)] > 0:
+            self.za_car.velocity = Vector(0.5,0)
+            print(1,distance)
+            last_reward = -1.0
         else:
-            rotation = self.actions[0]
-        self.za_car.move(rotation)
+            self.za_car.velocity = Vector(2.0,0)
+            print(0,distance)
+            last_reward = -0.1
+            if distance < last_distance:
+                last_reward = 0.1
 
-
+       
         # Setting the position of the ball
         self.za_ball_1.pos =  Vector(*self.za_car.pos) + Vector(40.0,0).rotate(self.za_car.angle)
         self.za_ball_2.pos =  Vector(*self.za_car.pos) + Vector(40.0,0).rotate((self.za_car.angle+30)%360)
         self.za_ball_3.pos =  Vector(*self.za_car.pos) + Vector(40.0,0).rotate((self.za_car.angle-30)%360)
 
 
-        # Getting the sensor values
-        box_range_x = np.arange(-10,10)
-        box_range_y = np.arange(-10,10)
-        sensor1 = sand[(self.za_ball_1.y + box_range_y).astype(np.int)*-1, (self.za_ball_1.x+box_range_x).astype(np.int)].sum()/400
-        sensor2 = sand[(self.za_ball_2.y + box_range_y).astype(np.int)*-1, (self.za_ball_2.x+box_range_x).astype(np.int)].sum()/400
-        sensor3 = sand[(self.za_ball_3.y + box_range_y).astype(np.int)*-1, (self.za_ball_3.x+box_range_x).astype(np.int)].sum()/400
 
         if self.za_car.x < 50.0:
             self.za_car.x = 50.0
             self.za_car.angle += 40
+            last_reward = -1
 
         if self.za_car.x > (width-50.0):
             self.za_car.x = width-50.0
             self.za_car.angle += 40
+            last_reward = -1
 
         if self.za_car.y < 50.0:
             self.za_car.y = 50.0
             self.za_car.angle += 40
+            last_reward = -1
 
         if self.za_car.y > (height - 50.0):
             self.za_car.y = height - 50.0
             self.za_car.angle += 40
-            print(sensor1,sensor2,sensor3)
+            last_reward = -1
          
 
 class MyApp(App):
